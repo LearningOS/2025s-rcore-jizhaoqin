@@ -1,8 +1,6 @@
 //! Process management syscalls
-use crate::{
-    task::{exit_current_and_run_next, suspend_current_and_run_next},
-    timer::get_time_us,
-};
+use crate::task::{exit_current_and_run_next, suspend_current_and_run_next, TASK_MANAGER};
+use crate::timer::get_time_us;
 
 #[repr(C)]
 #[derive(Debug)]
@@ -38,8 +36,29 @@ pub fn sys_get_time(ts: *mut TimeVal, _tz: usize) -> isize {
     0
 }
 
-// TODO: implement the syscall
-pub fn sys_trace(_trace_request: usize, _id: usize, _data: usize) -> isize {
-    trace!("kernel: sys_trace");
-    -1
+/// syscall for tracing and manipulating user memory or syscall statistics
+///
+/// - trace_request == 0: Read a u8 from user address `id` (as *const u8), ignore `data`, return the value.
+/// - trace_request == 1: Write `data` (as u8) to user address `id` (as *mut u8), return 0 on success.
+/// - trace_request == 2: Query the syscall count for syscall number `id` for current task, return the count (this call also counts).
+/// - Otherwise: return -1.
+pub fn sys_trace(trace_request: usize, id: usize, data: usize) -> isize {
+    match trace_request {
+        0 => {
+            let addr = id as *const u8;
+            let value = unsafe { core::ptr::read_volatile(addr) };
+            value as isize
+        }
+        1 => {
+            let addr = id as *mut u8;
+            unsafe { core::ptr::write_volatile(addr, data as u8) };
+            0
+        }
+        2 => {
+            // syscall count for current task
+            let count = TASK_MANAGER.get_syscall_count(id);
+            count as isize
+        }
+        _ => -1,
+    }
 }
