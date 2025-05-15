@@ -21,6 +21,7 @@
 #![no_main]
 #![feature(panic_info_message)]
 #![feature(alloc_error_handler)]
+#![allow(clippy::missing_safety_doc)]
 
 #[macro_use]
 extern crate bitflags;
