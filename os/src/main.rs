@@ -95,13 +95,20 @@ fn kernel_log_info() {
 #[no_mangle]
 /// the rust entry-point of os
 pub fn rust_main() -> ! {
+    // 清理存储未初始化的全局变量或静态变量的区域
     clear_bss();
     kernel_log_info();
+    // 启用和初始化动态内存分配
     heap_alloc::init_heap();
+    // 初始化trap处理
     trap::init();
+    // 加载用户程序
     loader::load_apps();
+    // 启用时钟中断, 抢占式任务管理必要条件
     trap::enable_timer_interrupt();
+    // 设置第一个计时器
     timer::set_next_trigger();
+    // 运行第一个用户程序
     task::run_first_task();
     panic!("Unreachable in rust_main!");
 }

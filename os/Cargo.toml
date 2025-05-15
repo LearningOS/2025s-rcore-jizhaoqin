@@ -1,5 +1,5 @@
 [package]
-name = "os"
+name    = "os"
 version = "0.1.0"
 authors = ["Yifan Wu <shinbokuow@163.com>"]
 edition = "2021"
@@ -8,6 +8,6 @@ edition = "2021"
 
 [dependencies]
 buddy_system_allocator = "0.6"
-lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
-log = "0.4"
-riscv = { git = "https://github.com/rcore-os/riscv", features = ["inline-asm"] }
+lazy_static            = { version = "1.4.0", features = ["spin_no_std"] }
+log                    = "0.4"
+riscv                  = { git = "https://github.com/rcore-os/riscv", features = ["inline-asm"] }
