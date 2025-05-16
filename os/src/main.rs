@@ -100,6 +100,7 @@ fn kernel_log_info() {
 pub fn rust_main() -> ! {
     clear_bss();
     kernel_log_info();
+    // initiate heap allocator, frame allocator and kernel space
     mm::init();
     println!("[kernel] back to world!");
     mm::remap_test();
