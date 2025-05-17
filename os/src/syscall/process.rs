@@ -255,21 +255,48 @@ pub fn sys_sbrk(size: i32) -> isize {
     }
 }
 
-/// YOUR JOB: Implement spawn.
+/// TODO: Implement spawn.
 /// HINT: fork + exec =/= spawn
-pub fn sys_spawn(_path: *const u8) -> isize {
+pub fn sys_spawn(path: *const u8) -> isize {
     trace!(
         "kernel:pid[{}] sys_spawn NOT IMPLEMENTED",
         current_task().unwrap().pid.0
     );
+
+    let token = current_user_token();
+    let path = translated_str(token, path);
+
+    if let Some(data) = get_app_data_by_name(path.as_str()) {
+        let current_task = current_task().unwrap();
+        let new_task = current_task.spawn(data);
+        let new_pid = new_task.pid.0;
+        // add new task to scheduler
+        add_task(new_task);
+        return new_pid as isize;
+    }
+
     -1
 }
 
-// YOUR JOB: Set task priority.
-pub fn sys_set_priority(_prio: isize) -> isize {
+/// TODO: Set task priority.
+///
+/// - syscall ID：140
+/// - 设置当前进程优先级为 priority
+/// - 参数：priority 进程优先级，要求 priority >= 2
+/// - 返回值：如果输入合法则返回 priority，否则返回 -1
+pub fn sys_set_priority(priority: isize) -> isize {
     trace!(
         "kernel:pid[{}] sys_set_priority NOT IMPLEMENTED",
         current_task().unwrap().pid.0
     );
-    -1
+
+    // 检查priority是否合法
+    if priority <= 2 {
+        return -1;
+    }
+
+    let current_task = current_task().unwrap();
+    current_task.inner_exclusive_access().priority = priority as usize;
+
+    priority
 }

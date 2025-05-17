@@ -4,26 +4,45 @@ use crate::sync::UPSafeCell;
 use alloc::collections::VecDeque;
 use alloc::sync::Arc;
 use lazy_static::*;
-///A array of `TaskControlBlock` that is thread-safe
+
+pub const BIG_STRIDE: usize = 512;
+
+/// A array of `TaskControlBlock` that is thread-safe
+///
+/// 维护进程队列, 将执行逻辑分给`Processor`
 pub struct TaskManager {
     ready_queue: VecDeque<Arc<TaskControlBlock>>,
 }
 
 /// A simple FIFO scheduler.
 impl TaskManager {
-    ///Creat an empty TaskManager
+    ///Create an empty TaskManager
     pub fn new() -> Self {
         Self {
             ready_queue: VecDeque::new(),
         }
     }
+
     /// Add process back to ready queue
     pub fn add(&mut self, task: Arc<TaskControlBlock>) {
+        // 每次添加入队列都更新stride
+        task.inner_exclusive_access().update_stride();
         self.ready_queue.push_back(task);
     }
-    /// Take a process out of the ready queue
+
+    /// Take a process with min `stride` out of the ready queue
     pub fn fetch(&mut self) -> Option<Arc<TaskControlBlock>> {
-        self.ready_queue.pop_front()
+        if self.ready_queue.is_empty() {
+            return None;
+        }
+        // Find the index with the minimum stride
+        let min_stride_index = self
+            .ready_queue
+            .iter()
+            .enumerate()
+            .min_by_key(|&(_, task)| task.inner_exclusive_access().stride)
+            .map(|(idx, _)| idx)?;
+        self.ready_queue.remove(min_stride_index)
     }
 }
 
