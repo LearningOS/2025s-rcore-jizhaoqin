@@ -20,6 +20,9 @@
 
 #![deny(missing_docs)]
 #![deny(warnings)]
+#![allow(clippy::new_without_default)]
+#![allow(clippy::not_unsafe_ptr_arg_deref)]
+#![allow(clippy::bad_bit_mask)]
 #![no_std]
 #![no_main]
 #![feature(panic_info_message)]

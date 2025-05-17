@@ -52,6 +52,8 @@ impl PartialEq for TimerCondVar {
     }
 }
 impl Eq for TimerCondVar {}
+
+#[allow(clippy::non_canonical_partial_ord_impl)]
 impl PartialOrd for TimerCondVar {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         let a = -(self.expire_ms as isize);

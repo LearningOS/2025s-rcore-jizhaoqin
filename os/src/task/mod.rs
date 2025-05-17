@@ -140,7 +140,7 @@ pub fn exit_current_and_run_next(exit_code: i32) {
             // are limited in a single process. Therefore, the blocked tasks are
             // removed when the PCB is deallocated.
             trace!("kernel: exit_current_and_run_next .. remove_inactive_task");
-            remove_inactive_task(Arc::clone(&task));
+            remove_inactive_task(Arc::clone(task));
             let mut task_inner = task.inner_exclusive_access();
             if let Some(res) = task_inner.res.take() {
                 recycle_res.push(res);
