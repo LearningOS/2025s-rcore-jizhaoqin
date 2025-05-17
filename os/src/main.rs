@@ -19,6 +19,7 @@
 
 #![deny(missing_docs)]
 #![deny(warnings)]
+#![allow(clippy::not_unsafe_ptr_arg_deref)]
 #![no_std]
 #![no_main]
 #![feature(panic_info_message)]
