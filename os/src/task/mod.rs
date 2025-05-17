@@ -15,8 +15,10 @@ mod switch;
 mod task;
 
 use crate::loader::{get_app_data, get_num_app};
+use crate::mm::{MapPermission, PageTableEntry, VirtAddr, VirtPageNum};
 use crate::sync::UPSafeCell;
 use crate::trap::TrapContext;
+use alloc::borrow::ToOwned;
 use alloc::vec::Vec;
 use lazy_static::*;
 use switch::__switch;
@@ -26,11 +28,11 @@ pub use context::TaskContext;
 
 /// The task manager, where all the tasks are managed.
 ///
-/// Functions implemented on `TaskManager` deals with all task state transitions
+/// - Functions implemented on `TaskManager` deals with all task state transitions
 /// and task context switching. For convenience, you can find wrappers around it
 /// in the module level.
 ///
-/// Most of `TaskManager` are hidden behind the field `inner`, to defer
+/// - Most of `TaskManager` are hidden behind the field `inner`, to defer
 /// borrowing checks to runtime. You can see examples on how to use `inner` in
 /// existing functions on `TaskManager`.
 pub struct TaskManager {
@@ -41,6 +43,9 @@ pub struct TaskManager {
 }
 
 /// The task manager inner in 'UPSafeCell'
+/// 
+/// - 内核维护一个`TaskManagerInner`
+/// - `TaskManagerInner`中维护一个任务列表和当前运行的任务id
 struct TaskManagerInner {
     /// task list
     tasks: Vec<TaskControlBlock>,
@@ -153,6 +158,70 @@ impl TaskManager {
             panic!("All applications completed!");
         }
     }
+
+    /// Get syscall count for current task
+    pub fn get_syscall_count(&self, syscall_id: usize) -> usize {
+        let inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current]
+            .syscall_counter
+            .get(&syscall_id)
+            .unwrap_or(&0)
+            .to_owned()
+    }
+
+    /// Increment syscall count for current task
+    pub fn increase_syscall_count(&self, syscall_id: usize) {
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current]
+            .syscall_counter
+            .entry(syscall_id)
+            .and_modify(|count| *count += 1)
+            .or_insert(1);
+    }
+
+    /// 为用户空间当前任务创建内存映射, 给定权限
+    pub fn mmap(
+        &self,
+        start_virtual_address: VirtAddr,
+        end_virtual_address: VirtAddr,
+        prot: usize,
+    ) {
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+
+        // 
+        let mut map_permission = MapPermission::U;
+        if prot & 1 == 1 {
+            map_permission |= MapPermission::R;
+        }
+        if prot & 2 == 2 {
+            map_permission |= MapPermission::W;
+        }
+        if prot & 4 == 4 {
+            map_permission |= MapPermission::X;
+        }
+
+        inner.tasks[current].memory_set.insert_framed_area(
+            start_virtual_address,
+            end_virtual_address,
+            map_permission,
+        );
+    }
+
+    /// free the frame area for current task
+    pub fn munmap(
+        &self,
+        start_virtual_page_number: VirtPageNum,
+        end_virtual_page_number: VirtPageNum,
+    ) -> isize {
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current]
+            .memory_set
+            .munmap(start_virtual_page_number, end_virtual_page_number)
+    }
 }
 
 /// Run the first task in task list.
@@ -201,4 +270,13 @@ pub fn current_trap_cx() -> &'static mut TrapContext {
 /// Change the current 'Running' task's program break
 pub fn change_program_brk(size: i32) -> Option<usize> {
     TASK_MANAGER.change_current_program_brk(size)
+}
+
+/// Get the page table entry of the current 'Running' task by virtual address
+pub fn get_page_table_entry(virtual_address: VirtAddr) -> Option<PageTableEntry> {
+    let inner = TASK_MANAGER.inner.exclusive_access();
+    let current = inner.current_task;
+    inner.tasks[current]
+        .memory_set
+        .translate(virtual_address.floor())
 }

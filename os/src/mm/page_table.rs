@@ -70,9 +70,19 @@ impl PageTableEntry {
     pub fn executable(&self) -> bool {
         (self.flags() & PTEFlags::X) != PTEFlags::empty()
     }
+    /// The page pointered by page table entry is in for user space?
+    pub fn is_user(&self) -> bool {
+        (self.flags() & PTEFlags::U) != PTEFlags::empty()
+    }
 }
 
 /// page table structure
+///
+/// - `PageTable`包含本身的物理页号
+/// - 一个`PageTable`可以包含512个`PageTableEntry`
+/// - 但这里不直接包含`PageTableEntry`，而是包含一个`[FrameTracker]`,
+/// 因为大多数情况下一个页表的大部分条目都为空, 我们只需要跟踪少量非空条目的集合即可
+/// - `FrameTracker`包含一个物理页号
 pub struct PageTable {
     root_ppn: PhysPageNum,
     frames: Vec<FrameTracker>,
@@ -163,7 +173,7 @@ impl Default for PageTable {
     }
 }
 
-/// Translate&Copy a ptr[u8] array with LENGTH len to a mutable u8 Vec through page table
+/// Translate&Copy a [u8] array with LENGTH len to a mutable u8 Vec through page table
 pub fn translated_byte_buffer(token: usize, ptr: *const u8, len: usize) -> Vec<&'static mut [u8]> {
     let page_table = PageTable::from_token(token);
     let mut start = ptr as usize;

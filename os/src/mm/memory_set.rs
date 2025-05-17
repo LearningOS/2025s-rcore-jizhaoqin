@@ -34,6 +34,9 @@ lazy_static! {
         Arc::new(unsafe { UPSafeCell::new(MemorySet::new_kernel()) });
 }
 /// address space
+/// 
+/// - 每个`MemorySet`维护一个`PageTable`, 表示最大支持容量为1个`PageTable`的地址空间
+/// - `MemorySet`中维护一个`Vec<MapArea>`, 表示已经为用户空间程序完成映射的内存区域
 pub struct MemorySet {
     page_table: PageTable,
     areas: Vec<MapArea>,
@@ -51,6 +54,21 @@ impl MemorySet {
     pub fn token(&self) -> usize {
         self.page_table.token()
     }
+
+    /// remove MapArea from memory set, given the the range of virtual page numbers
+    ///
+    /// - success: return 0
+    /// - fail: return -1
+    pub fn munmap(&mut self, start_vpn: VirtPageNum, end_vpn: VirtPageNum) -> isize {
+        for area in self.areas.iter_mut() {
+            if area.vpn_range.get_start() == start_vpn && area.vpn_range.get_end() == end_vpn {
+                area.unmap(&mut self.page_table);
+                return 0;
+            }
+        }
+        -1
+    }
+
     /// Assume that no conflicts.
     pub fn insert_framed_area(
         &mut self,
@@ -70,6 +88,7 @@ impl MemorySet {
         }
         self.areas.push(map_area);
     }
+
     /// Mention that trampoline is not collected by areas.
     fn map_trampoline(&mut self) {
         self.page_table.map(
@@ -78,6 +97,7 @@ impl MemorySet {
             PTEFlags::R | PTEFlags::X,
         );
     }
+
     /// Without kernel stacks.
     pub fn new_kernel() -> Self {
         let mut memory_set = Self::new_bare();

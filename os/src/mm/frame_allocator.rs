@@ -17,8 +17,9 @@ pub struct FrameTracker {
 impl FrameTracker {
     /// Create a new FrameTracker
     pub fn new(ppn: PhysPageNum) -> Self {
-        // page cleaning
+        // 取得此页的引用`&mut [u8; PAGE_SIZE=4096]`, 即4kB
         let bytes_array = ppn.get_bytes_array();
+        // 清除此页的内容, 全部置为0
         for i in bytes_array {
             *i = 0;
         }
@@ -56,7 +57,12 @@ impl StackFrameAllocator {
         self.end = r.0;
         // trace!("last {} Physical Frames.", self.end - self.current);
     }
+
+    pub fn available_page_frames(&self) -> usize {
+        self.recycled.len() + (self.end - self.current)
+    }
 }
+
 impl FrameAllocator for StackFrameAllocator {
     fn new() -> Self {
         Self {

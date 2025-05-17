@@ -59,6 +59,7 @@ impl From<usize> for PhysPageNum {
     }
 }
 impl From<usize> for VirtAddr {
+    /// usize作为机器读的虚拟地址时, 不能直接转换到VirtPageNum, 只能先转换到VirtAddr
     fn from(v: usize) -> Self {
         Self(v & ((1 << VA_WIDTH_SV39) - 1))
     }
@@ -79,6 +80,17 @@ impl From<PhysPageNum> for usize {
     }
 }
 impl From<VirtAddr> for usize {
+    /// - SV39 分页模式规定 64 位虚拟地址usize的[39, 63]这 25 位必须和第 38 位相同(全为 0 或全为 1),
+    /// 否则 MMU 会直接认定它是一个 不合法的虚拟地址, 所以usize作为虚拟地址和VirtAddr
+    /// 之间相互转换需要辅助函数处理,
+    ///
+    /// - 注意VirtAddr才是人类读的虚拟地址, 高25位无关没有限制(一般设置为0)
+    ///
+    /// - usize作为物理地址时 和 PhysAddr之间的转换不需要特别处理 (因为对物理地址的无用高8位没有限制?)
+    ///
+    /// - usize作为虚拟地址时, 是机器读的虚拟地址, 表示虚拟地址时需要满足SV39的要求, 高25位需要和第38位相同
+    ///
+    /// - 物理页号有44位, 物理地址有56位, 虚拟页号有27位, 虚拟地址有39位, 两者offset都为12位
     fn from(v: VirtAddr) -> Self {
         if v.0 >= (1 << (VA_WIDTH_SV39 - 1)) {
             v.0 | (!((1 << VA_WIDTH_SV39) - 1))
@@ -116,6 +128,9 @@ impl VirtAddr {
 }
 impl From<VirtAddr> for VirtPageNum {
     fn from(v: VirtAddr) -> Self {
+        // 只有已经对齐本页起始地址的虚拟地址才能直接调用from转换为虚拟页号
+        // 建议直接使用floor方法取得本页的虚拟页号
+        // 这里assert_eq!是为了防止错误使用
         assert_eq!(v.page_offset(), 0);
         v.floor()
     }
@@ -161,7 +176,7 @@ impl VirtPageNum {
         let mut vpn = self.0;
         let mut idx = [0usize; 3];
         for i in (0..3).rev() {
-            idx[i] = vpn & 511;
+            idx[i] = vpn & 511; // [511, 511, 511]
             vpn >>= 9;
         }
         idx

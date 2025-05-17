@@ -5,8 +5,16 @@ use crate::mm::{
     kernel_stack_position, MapPermission, MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE,
 };
 use crate::trap::{trap_handler, TrapContext};
+use alloc::collections::BTreeMap;
 
 /// The task control block (TCB) of a task.
+///
+/// - `TaskControlBlock` 维护所有与此任务相关的
+///     - 上下文`TaskContext`, 包含了寄存器的值
+///     - 任务状态`TaskStatus`
+///     - 任务的内存空间`MemorySet`
+///     - 任务的系统调用计数`BTreeMap<usize, usize>`
+///     - 其他信息
 pub struct TaskControlBlock {
     /// Save task context
     pub task_cx: TaskContext,
@@ -28,6 +36,9 @@ pub struct TaskControlBlock {
 
     /// Program break
     pub program_brk: usize,
+
+    /// syscall count for this task
+    pub syscall_counter: BTreeMap<usize, usize>,
 }
 
 impl TaskControlBlock {
@@ -63,6 +74,7 @@ impl TaskControlBlock {
             base_size: user_sp,
             heap_bottom: user_sp,
             program_brk: user_sp,
+            syscall_counter: BTreeMap::new(),
         };
         // prepare TrapContext in user space
         let trap_cx = task_control_block.get_trap_cx();
