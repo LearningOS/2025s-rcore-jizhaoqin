@@ -226,7 +226,7 @@ pub struct UserBuffer {
 }
 
 impl UserBuffer {
-    /// Constuct UserBuffer
+    /// Construct UserBuffer
     pub fn new(buffers: Vec<&'static mut [u8]>) -> Self {
         Self { buffers }
     }

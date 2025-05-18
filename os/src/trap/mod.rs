@@ -42,7 +42,7 @@ fn set_kernel_trap_entry() {
 
 fn set_user_trap_entry() {
     unsafe {
-        stvec::write(TRAMPOLINE as usize, TrapMode::Direct);
+        stvec::write(TRAMPOLINE, TrapMode::Direct);
     }
 }
 
@@ -136,7 +136,7 @@ pub fn trap_return() -> ! {
 
 #[no_mangle]
 /// handle trap from kernel
-/// Unimplement: traps/interrupts/exceptions from kernel mode
+/// Unimplemented: traps/interrupts/exceptions from kernel mode
 /// Todo: Chapter 9: I/O device
 pub fn trap_from_kernel() -> ! {
     use riscv::register::sepc;

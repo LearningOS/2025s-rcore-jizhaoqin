@@ -34,19 +34,22 @@ impl Bitmap {
             )
             .lock()
             .modify(0, |bitmap_block: &mut BitmapBlock| {
+                // Some((u64的index, u64内部第一个0的index))
                 if let Some((bits64_pos, inner_pos)) = bitmap_block
                     .iter()
                     .enumerate()
-                    .find(|(_, bits64)| **bits64 != u64::MAX)
+                    .find(|(_, bits64)| **bits64 != u64::MAX) // 寻找第一个未被全部分配的组
                     .map(|(bits64_pos, bits64)| (bits64_pos, bits64.trailing_ones() as usize))
                 {
                     // modify cache
                     bitmap_block[bits64_pos] |= 1u64 << inner_pos;
+                    // 计算第几个块(block_id), 第几个u64(bits64_pos)中的第几个bit(inner_pos)被标记修改, 用一个usize表示
                     Some(block_id * BLOCK_BITS + bits64_pos * 64 + inner_pos as usize)
                 } else {
                     None
                 }
             });
+            // 一旦在某个块中找到一个空闲的bit并成功分配, 就不再考虑后续的块提前返回
             if pos.is_some() {
                 return pos;
             }

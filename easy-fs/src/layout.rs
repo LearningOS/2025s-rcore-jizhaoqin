@@ -161,7 +161,7 @@ impl DiskInode {
                 })
         }
     }
-    /// Inncrease the size of current disk inode
+    /// Increase the size of current disk inode
     pub fn increase_size(
         &mut self,
         new_size: u32,

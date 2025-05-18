@@ -13,7 +13,7 @@ pub const KERNEL_HEAP_SIZE: usize = 0x200_0000;
 pub const PAGE_SIZE: usize = 0x1000;
 /// page size bits: 12
 pub const PAGE_SIZE_BITS: usize = 0xc;
-/// the virtual addr of trapoline
+/// the virtual addr of trampoline
 pub const TRAMPOLINE: usize = usize::MAX - PAGE_SIZE + 1;
 /// the virtual addr of trap context
 pub const TRAP_CONTEXT_BASE: usize = TRAMPOLINE - PAGE_SIZE;
