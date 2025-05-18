@@ -318,6 +318,20 @@ impl MemorySet {
             false
         }
     }
+
+    /// remove MapArea from memory set, given the the range of virtual page numbers
+    ///
+    /// - success: return 0
+    /// - fail: return -1
+    pub fn munmap(&mut self, start_vpn: VirtPageNum, end_vpn: VirtPageNum) -> isize {
+        for area in self.areas.iter_mut() {
+            if area.vpn_range.get_start() == start_vpn && area.vpn_range.get_end() == end_vpn {
+                area.unmap(&mut self.page_table);
+                return 0;
+            }
+        }
+        -1
+    }
 }
 /// map area structure, controls a contiguous piece of virtual memory
 pub struct MapArea {

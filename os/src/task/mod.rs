@@ -22,7 +22,10 @@ mod switch;
 #[allow(rustdoc::private_intra_doc_links)]
 mod task;
 
-use crate::fs::{open_file, OpenFlags};
+use crate::{
+    fs::{open_file, OpenFlags},
+    mm::{PageTableEntry, VirtAddr},
+};
 use alloc::sync::Arc;
 pub use context::TaskContext;
 use lazy_static::*;
@@ -119,4 +122,12 @@ lazy_static! {
 ///Add init process to the manager
 pub fn add_initproc() {
     add_task(INITPROC.clone());
+}
+
+/// Get the page table entry of the current 'Running' task by virtual address
+pub fn get_page_table_entry(virtual_address: VirtAddr) -> Option<PageTableEntry> {
+    let current_task = current_task().unwrap();
+    let task_inner = current_task.inner_exclusive_access();
+
+    task_inner.memory_set.translate(virtual_address.floor())
 }
