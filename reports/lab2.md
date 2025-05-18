@@ -20,7 +20,7 @@ pub fn sys_mmap(start: usize, len: usize, prot: usize) -> isize
 - 实现: 执行要求的各种检查, 使用`insert_framed_area()`分配物理页帧, 完成地址映射并设置权限
 
 ```rust
-pub fn sys_munmap(start: usize, len: usize) -> isize {
+pub fn sys_munmap(start: usize, len: usize) -> isize 
 ```
 - 实现: 执行检查, 使用`TASK_MANAGER.inner.task.MemorySet.munmap()`移除维护的页帧及其映射
 
