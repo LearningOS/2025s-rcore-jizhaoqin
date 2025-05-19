@@ -210,6 +210,8 @@ pub fn translated_ref<T>(token: usize, ptr: *const T) -> &'static T {
         .get_ref()
 }
 /// Translate a ptr[u8] array through page table and return a mutable reference of T
+///
+/// 只是给出用户空间虚拟地址的物理地址, 并没有转换成内核空间的虚拟地址
 pub fn translated_refmut<T>(token: usize, ptr: *mut T) -> &'static mut T {
     let page_table = PageTable::from_token(token);
     let va = ptr as usize;

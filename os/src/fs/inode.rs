@@ -4,8 +4,9 @@
 //!
 //! `UPSafeCell<OSInodeInner>` -> `OSInode`: for static `ROOT_INODE`,we
 //! need to wrap `OSInodeInner` into `UPSafeCell`
-use super::File;
+use super::{File, Stat};
 use crate::drivers::BLOCK_DEVICE;
+use crate::fs::StatMode;
 use crate::mm::UserBuffer;
 use crate::sync::UPSafeCell;
 use alloc::vec::Vec;
@@ -22,6 +23,7 @@ pub struct OSInode {
     writable: bool,
     inner: UPSafeCell<OSInodeInner>,
 }
+
 /// The OS inode inner in 'UPSafeCell'
 pub struct OSInodeInner {
     offset: usize,
@@ -57,6 +59,7 @@ impl OSInode {
 }
 
 lazy_static! {
+    /// The root inode of the filesystem
     pub static ref ROOT_INODE: Arc<Inode> = {
         let efs = EasyFileSystem::open(BLOCK_DEVICE.clone());
         Arc::new(EasyFileSystem::root_inode(&efs))
@@ -75,9 +78,9 @@ pub fn list_apps() {
 bitflags! {
     ///  The flags argument to the open() system call is constructed by ORing together zero or more of the following values:
     pub struct OpenFlags: u32 {
-        /// readyonly
+        /// ready only
         const RDONLY = 0;
-        /// writeonly
+        /// write only
         const WRONLY = 1 << 0;
         /// read and write
         const RDWR = 1 << 1;
@@ -156,5 +159,24 @@ impl File for OSInode {
             total_write_size += write_size;
         }
         total_write_size
+    }
+
+    /// get file status
+    fn get_status(&self) -> Stat {
+        let inner = self.inner.exclusive_access();
+        let (inode_id, nlink, is_file) = inner.inode.get_file_status();
+
+        let mode = if is_file {
+            StatMode::FILE
+        } else {
+            StatMode::DIR
+        };
+        Stat {
+            dev: 0,
+            ino: inode_id,
+            mode,
+            nlink,
+            pad: [0; 7],
+        }
     }
 }

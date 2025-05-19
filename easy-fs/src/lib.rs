@@ -9,7 +9,7 @@ mod efs;
 mod layout;
 mod vfs;
 /// Use a block size of 512 bytes
-pub const BLOCK_SZ: usize = 512;
+pub const BLOCK_SIZE: usize = 512;
 use bitmap::Bitmap;
 use block_cache::{block_cache_sync_all, get_block_cache};
 pub use block_dev::BlockDevice;

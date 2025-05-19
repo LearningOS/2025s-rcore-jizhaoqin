@@ -1,4 +1,4 @@
-use super::{BlockDevice, BLOCK_SZ};
+use super::{BlockDevice, BLOCK_SIZE};
 use alloc::collections::VecDeque;
 use alloc::sync::Arc;
 use lazy_static::*;
@@ -6,7 +6,7 @@ use spin::Mutex;
 /// Cached block inside memory
 pub struct BlockCache {
     /// cached block data
-    cache: [u8; BLOCK_SZ],
+    cache: [u8; BLOCK_SIZE],
     /// underlying block id
     block_id: usize,
     /// underlying block device
@@ -18,7 +18,7 @@ pub struct BlockCache {
 impl BlockCache {
     /// Load a new BlockCache from disk.
     pub fn new(block_id: usize, block_device: Arc<dyn BlockDevice>) -> Self {
-        let mut cache = [0u8; BLOCK_SZ];
+        let mut cache = [0u8; BLOCK_SIZE];
         block_device.read_block(block_id, &mut cache);
         Self {
             cache,
@@ -37,7 +37,7 @@ impl BlockCache {
         T: Sized,
     {
         let type_size = core::mem::size_of::<T>();
-        assert!(offset + type_size <= BLOCK_SZ);
+        assert!(offset + type_size <= BLOCK_SIZE);
         let addr = self.addr_of_offset(offset);
         unsafe { &*(addr as *const T) }
     }
@@ -47,7 +47,7 @@ impl BlockCache {
         T: Sized,
     {
         let type_size = core::mem::size_of::<T>();
-        assert!(offset + type_size <= BLOCK_SZ);
+        assert!(offset + type_size <= BLOCK_SIZE);
         self.modified = true;
         let addr = self.addr_of_offset(offset);
         unsafe { &mut *(addr as *mut T) }

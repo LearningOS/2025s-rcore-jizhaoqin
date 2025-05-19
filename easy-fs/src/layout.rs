@@ -1,4 +1,4 @@
-use super::{get_block_cache, BlockDevice, BLOCK_SZ};
+use super::{get_block_cache, BlockDevice, BLOCK_SIZE};
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::fmt::{Debug, Formatter, Result};
@@ -6,11 +6,11 @@ use core::fmt::{Debug, Formatter, Result};
 /// Magic number for sanity check
 const EFS_MAGIC: u32 = 0x3b800001;
 /// The max number of direct inodes
-const INODE_DIRECT_COUNT: usize = 28;
+const INODE_DIRECT_COUNT: usize = 27;
 /// The max length of inode name
 const NAME_LENGTH_LIMIT: usize = 27;
 /// The max number of indirect1 inodes
-const INODE_INDIRECT1_COUNT: usize = BLOCK_SZ / 4;
+const INODE_INDIRECT1_COUNT: usize = BLOCK_SIZE / 4;
 /// The max number of indirect2 inodes
 const INODE_INDIRECT2_COUNT: usize = INODE_INDIRECT1_COUNT * INODE_INDIRECT1_COUNT;
 /// The upper bound of direct inode index
@@ -75,16 +75,21 @@ pub enum DiskInodeType {
 }
 
 /// A indirect block
-type IndirectBlock = [u32; BLOCK_SZ / 4];
+type IndirectBlock = [u32; BLOCK_SIZE / 4];
 /// A data block
-type DataBlock = [u8; BLOCK_SZ];
+type DataBlock = [u8; BLOCK_SIZE];
+
 /// A disk inode
+/// - 这里添加了nlink字段, `INODE_DIRECT_COUNT`改为27
+/// - 保持结构体的大小为128字节
+/// - nlink在删除文件时需要用到, 但文件系统目前没有删除功能
 #[repr(C)]
 pub struct DiskInode {
     pub size: u32,
     pub direct: [u32; INODE_DIRECT_COUNT],
     pub indirect1: u32,
     pub indirect2: u32,
+    pub nlink: u32,
     type_: DiskInodeType,
 }
 
@@ -96,6 +101,7 @@ impl DiskInode {
         self.direct.iter_mut().for_each(|v| *v = 0);
         self.indirect1 = 0;
         self.indirect2 = 0;
+        self.nlink = 1;
         self.type_ = type_;
     }
     /// Whether this inode is a directory
@@ -112,12 +118,12 @@ impl DiskInode {
         Self::_data_blocks(self.size)
     }
     fn _data_blocks(size: u32) -> u32 {
-        (size + BLOCK_SZ as u32 - 1) / BLOCK_SZ as u32
+        (size + BLOCK_SIZE as u32 - 1) / BLOCK_SIZE as u32
     }
     /// Return number of blocks needed include indirect1/2.
     pub fn total_blocks(size: u32) -> u32 {
         let data_blocks = Self::_data_blocks(size) as usize;
-        let mut total = data_blocks as usize;
+        let mut total = data_blocks;
         // indirect1
         if data_blocks > INODE_DIRECT_COUNT {
             total += 1;
@@ -320,11 +326,11 @@ impl DiskInode {
         if start >= end {
             return 0;
         }
-        let mut start_block = start / BLOCK_SZ;
+        let mut start_block = start / BLOCK_SIZE;
         let mut read_size = 0usize;
         loop {
             // calculate end of current block
-            let mut end_current_block = (start / BLOCK_SZ + 1) * BLOCK_SZ;
+            let mut end_current_block = (start / BLOCK_SIZE + 1) * BLOCK_SIZE;
             end_current_block = end_current_block.min(end);
             // read and update read size
             let block_read_size = end_current_block - start;
@@ -335,7 +341,7 @@ impl DiskInode {
             )
             .lock()
             .read(0, |data_block: &DataBlock| {
-                let src = &data_block[start % BLOCK_SZ..start % BLOCK_SZ + block_read_size];
+                let src = &data_block[start % BLOCK_SIZE..start % BLOCK_SIZE + block_read_size];
                 dst.copy_from_slice(src);
             });
             read_size += block_read_size;
@@ -348,6 +354,7 @@ impl DiskInode {
         }
         read_size
     }
+
     /// Write data into current disk inode
     /// size must be adjusted properly beforehand
     pub fn write_at(
@@ -359,11 +366,11 @@ impl DiskInode {
         let mut start = offset;
         let end = (offset + buf.len()).min(self.size as usize);
         assert!(start <= end);
-        let mut start_block = start / BLOCK_SZ;
+        let mut start_block = start / BLOCK_SIZE;
         let mut write_size = 0usize;
         loop {
             // calculate end of current block
-            let mut end_current_block = (start / BLOCK_SZ + 1) * BLOCK_SZ;
+            let mut end_current_block = (start / BLOCK_SIZE + 1) * BLOCK_SIZE;
             end_current_block = end_current_block.min(end);
             // write and update write size
             let block_write_size = end_current_block - start;
@@ -374,7 +381,7 @@ impl DiskInode {
             .lock()
             .modify(0, |data_block: &mut DataBlock| {
                 let src = &buf[write_size..write_size + block_write_size];
-                let dst = &mut data_block[start % BLOCK_SZ..start % BLOCK_SZ + block_write_size];
+                let dst = &mut data_block[start % BLOCK_SIZE..start % BLOCK_SIZE + block_write_size];
                 dst.copy_from_slice(src);
             });
             write_size += block_write_size;
@@ -388,14 +395,20 @@ impl DiskInode {
         write_size
     }
 }
+
 /// A directory entry
+///
+/// - 是一个文件的索引(包含文件名和inode id), 保存在目录数据块中
+/// - 而真正的文件数据保存在inode id对应的文件数据块中DiskInodeType::Directory
+/// - 即`ROOT_INODE` -> 根节点数据块 -> 文件索引 -> 文件数据块
 #[repr(C)]
 pub struct DirEntry {
     name: [u8; NAME_LENGTH_LIMIT + 1],
     inode_id: u32,
 }
+
 /// Size of a directory entry
-pub const DIRENT_SZ: usize = 32;
+pub const DIR_ENTRY_SIZE: usize = 32;
 
 impl DirEntry {
     /// Create an empty directory entry
@@ -405,6 +418,7 @@ impl DirEntry {
             inode_id: 0,
         }
     }
+
     /// Crate a directory entry from name and inode number
     pub fn new(name: &str, inode_id: u32) -> Self {
         let mut bytes = [0u8; NAME_LENGTH_LIMIT + 1];
@@ -414,13 +428,18 @@ impl DirEntry {
             inode_id,
         }
     }
+
     /// Serialize into bytes
     pub fn as_bytes(&self) -> &[u8] {
-        unsafe { core::slice::from_raw_parts(self as *const _ as usize as *const u8, DIRENT_SZ) }
+        unsafe {
+            core::slice::from_raw_parts(self as *const _ as usize as *const u8, DIR_ENTRY_SIZE)
+        }
     }
     /// Serialize into mutable bytes
     pub fn as_bytes_mut(&mut self) -> &mut [u8] {
-        unsafe { core::slice::from_raw_parts_mut(self as *mut _ as usize as *mut u8, DIRENT_SZ) }
+        unsafe {
+            core::slice::from_raw_parts_mut(self as *mut _ as usize as *mut u8, DIR_ENTRY_SIZE)
+        }
     }
     /// Get name of the entry
     pub fn name(&self) -> &str {

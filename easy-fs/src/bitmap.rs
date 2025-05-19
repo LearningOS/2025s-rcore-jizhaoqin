@@ -1,9 +1,9 @@
-use super::{get_block_cache, BlockDevice, BLOCK_SZ};
+use super::{get_block_cache, BlockDevice, BLOCK_SIZE};
 use alloc::sync::Arc;
 /// A bitmap block
 type BitmapBlock = [u64; 64];
 /// Number of bits in a block
-const BLOCK_BITS: usize = BLOCK_SZ * 8;
+const BLOCK_BITS: usize = BLOCK_SIZE * 8;
 /// A bitmap
 pub struct Bitmap {
     start_block_id: usize,
@@ -25,30 +25,30 @@ impl Bitmap {
             blocks,
         }
     }
+
     /// Allocate a new block from a block device
     pub fn alloc(&self, block_device: &Arc<dyn BlockDevice>) -> Option<usize> {
         for block_id in 0..self.blocks {
-            let pos = get_block_cache(
-                block_id + self.start_block_id as usize,
-                Arc::clone(block_device),
-            )
-            .lock()
-            .modify(0, |bitmap_block: &mut BitmapBlock| {
-                // Some((u64的index, u64内部第一个0的index))
-                if let Some((bits64_pos, inner_pos)) = bitmap_block
-                    .iter()
-                    .enumerate()
-                    .find(|(_, bits64)| **bits64 != u64::MAX) // 寻找第一个未被全部分配的组
-                    .map(|(bits64_pos, bits64)| (bits64_pos, bits64.trailing_ones() as usize))
-                {
-                    // modify cache
-                    bitmap_block[bits64_pos] |= 1u64 << inner_pos;
-                    // 计算第几个块(block_id), 第几个u64(bits64_pos)中的第几个bit(inner_pos)被标记修改, 用一个usize表示
-                    Some(block_id * BLOCK_BITS + bits64_pos * 64 + inner_pos as usize)
-                } else {
-                    None
-                }
-            });
+            let pos = get_block_cache(block_id + self.start_block_id, Arc::clone(block_device))
+                .lock()
+                .modify(0, |bitmap_block: &mut BitmapBlock| {
+                    // Some((u64的index, u64内部第一个0的index))
+                    if let Some((bits64_pos, inner_pos)) = bitmap_block
+                        .iter()
+                        .enumerate()
+                        .find(|(_, bits64)| **bits64 != u64::MAX) // 寻找第一个未被全部分配的组
+                        .map(|(bits64_pos, bits64)| (bits64_pos, bits64.trailing_ones() as usize))
+                    {
+                        // modify cache
+                        bitmap_block[bits64_pos] |= 1u64 << inner_pos;
+                        // 计算第几个块(block_id), 第几个u64(bits64_pos)中的第几个bit(inner_pos)被标记修改, 用一个usize表示
+                        // 也就是分配的inode的编号
+                        // 对root node来说, 0号块的0号u64的0号bit
+                        Some(block_id * BLOCK_BITS + bits64_pos * 64 + inner_pos)
+                    } else {
+                        None
+                    }
+                });
             // 一旦在某个块中找到一个空闲的bit并成功分配, 就不再考虑后续的块提前返回
             if pos.is_some() {
                 return pos;
