@@ -44,9 +44,9 @@ jobs:
           rustup self update
           rustup update nightly
           rustup default nightly
-      # - name: Install cargo-binutils
-      #   run: |
-      #     cargo install cargo-binutils
+      - name: Install cargo-binutils
+        run: |
+          cargo install cargo-binutils
       - uses: actions/checkout@v4
       - name: Run tests
         run: |
