@@ -85,10 +85,7 @@ pub fn sys_close(fd: usize) -> isize {
 ///   - fd: 文件描述符 -> OSInode -> Inode + offset -> all data
 ///   - st: 文件状态结构体
 pub fn sys_fstat(fd: usize, st: *mut Stat) -> isize {
-    trace!(
-        "kernel:pid[{}] sys_fstat NOT IMPLEMENTED",
-        current_task().unwrap().pid.0
-    );
+    trace!("kernel:pid[{}] sys_fstat", current_task().unwrap().pid.0);
 
     // st为用户态地址, 需要转换为内核态地址
     let token = current_user_token();
@@ -133,10 +130,7 @@ pub fn sys_fstat(fd: usize, st: *mut Stat) -> isize {
 /// - 返回值：如果出现了错误则返回 -1，否则返回 0。
 /// - 可能的错误: 链接同名文件
 pub fn sys_linkat(old_name: *const u8, new_name: *const u8) -> isize {
-    trace!(
-        "kernel:pid[{}] sys_linkat NOT IMPLEMENTED",
-        current_task().unwrap().pid.0
-    );
+    trace!("kernel:pid[{}] sys_linkat", current_task().unwrap().pid.0);
 
     let token = current_user_token();
     let old_name = translated_str(token, old_name);
@@ -162,10 +156,7 @@ pub fn sys_linkat(old_name: *const u8, new_name: *const u8) -> isize {
 /// - 返回值：如果出现了错误则返回 -1，否则返回 0
 /// - 可能的错误: 文件不存在
 pub fn sys_unlinkat(name: *const u8) -> isize {
-    trace!(
-        "kernel:pid[{}] sys_unlinkat NOT IMPLEMENTED",
-        current_task().unwrap().pid.0
-    );
+    trace!("kernel:pid[{}] sys_unlinkat", current_task().unwrap().pid.0);
 
     let token = current_user_token();
     let name = translated_str(token, name);

@@ -149,6 +149,8 @@ impl File for OSInode {
         }
         total_read_size
     }
+
+    /// 实现文件写入
     fn write(&self, buf: UserBuffer) -> usize {
         let mut inner = self.inner.exclusive_access();
         let mut total_write_size = 0usize;

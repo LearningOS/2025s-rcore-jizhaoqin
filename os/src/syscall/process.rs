@@ -109,10 +109,7 @@ pub fn sys_waitpid(pid: isize, exit_code_ptr: *mut i32) -> isize {
 /// HINT: You might reimplement it with virtual memory management.
 /// HINT: What if [`TimeVal`] is splitted by two pages ?
 pub fn sys_get_time(ts: *mut TimeVal, _tz: usize) -> isize {
-    trace!(
-        "kernel:pid[{}] sys_get_time NOT IMPLEMENTED",
-        current_task().unwrap().pid.0
-    );
+    trace!("kernel:pid[{}] sys_get_time", current_task().unwrap().pid.0);
 
     let user_token = current_user_token();
     let user_buffer_start = ts as *const u8;
@@ -140,10 +137,7 @@ pub fn sys_get_time(ts: *mut TimeVal, _tz: usize) -> isize {
 
 /// TODO: Implement mmap.
 pub fn sys_mmap(start: usize, len: usize, prot: usize) -> isize {
-    trace!(
-        "kernel:pid[{}] sys_mmap NOT IMPLEMENTED",
-        current_task().unwrap().pid.0
-    );
+    trace!("kernel:pid[{}] sys_mmap", current_task().unwrap().pid.0);
 
     if prot & !7 != 0 || prot & 7 == 0 {
         return -1;
@@ -201,8 +195,8 @@ pub fn sys_mmap(start: usize, len: usize, prot: usize) -> isize {
 
 /// TODO: Implement munmap.
 pub fn sys_munmap(start: usize, len: usize) -> isize {
-    trace!("kernel: sys_munmap NOT IMPLEMENTED YET!");
-
+    trace!("kernel:pid[{}] sys_munmap", current_task().unwrap().pid.0);
+    trace!("kernel: sys_munmap");
     let start_virtual_addr = VirtAddr::from(start);
     let start_virtual_page_number = start_virtual_addr.floor();
     let end_virtual_addr = VirtAddr::from(start + len);
@@ -233,10 +227,7 @@ pub fn sys_sbrk(size: i32) -> isize {
 /// TODO: Implement spawn.
 /// HINT: fork + exec =/= spawn
 pub fn sys_spawn(path: *const u8) -> isize {
-    trace!(
-        "kernel:pid[{}] sys_spawn NOT IMPLEMENTED",
-        current_task().unwrap().pid.0
-    );
+    trace!("kernel:pid[{}] sys_spawn", current_task().unwrap().pid.0);
 
     let token = current_user_token();
     let path = translated_str(token, path);
@@ -257,7 +248,7 @@ pub fn sys_spawn(path: *const u8) -> isize {
 /// TODO: Set task priority.
 pub fn sys_set_priority(priority: isize) -> isize {
     trace!(
-        "kernel:pid[{}] sys_set_priority NOT IMPLEMENTED",
+        "kernel:pid[{}] sys_set_priority",
         current_task().unwrap().pid.0
     );
 
