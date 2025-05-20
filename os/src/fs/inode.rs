@@ -143,11 +143,13 @@ impl File for OSInode {
         }
         total_read_size
     }
+
     /// write buffer data into file
     fn write(&self, buf: UserBuffer) -> usize {
         trace!("kernel: OSInode::write");
         let mut inner = self.inner.exclusive_access();
         let mut total_write_size = 0usize;
+
         for slice in buf.buffers.iter() {
             let write_size = inner.inode.write_at(inner.offset, slice);
             assert_eq!(write_size, slice.len());

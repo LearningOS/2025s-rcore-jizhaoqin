@@ -9,6 +9,7 @@ use crate::fs::{File, Stdin, Stdout};
 use crate::mm::{translated_refmut, MemorySet, KERNEL_SPACE};
 use crate::sync::{Condvar, Mutex, Semaphore, UPSafeCell};
 use crate::trap::{trap_handler, TrapContext};
+use alloc::collections::btree_map::BTreeMap;
 use alloc::string::String;
 use alloc::sync::{Arc, Weak};
 use alloc::vec;
@@ -45,10 +46,16 @@ pub struct ProcessControlBlockInner {
     pub task_res_allocator: RecycleAllocator,
     /// mutex list
     pub mutex_list: Vec<Option<Arc<dyn Mutex>>>,
+    /// available mutex list
+    pub available_mutex_list: BTreeMap<usize, usize>,
     /// semaphore list
     pub semaphore_list: Vec<Option<Arc<Semaphore>>>,
+    /// available semaphore list
+    pub available_semaphore_list: BTreeMap<usize, isize>,
     /// condvar list
     pub condvar_list: Vec<Option<Arc<Condvar>>>,
+    /// enable deadlock detect or not, 默认禁用
+    pub deadlock_detect: bool,
 }
 
 impl ProcessControlBlockInner {
@@ -117,8 +124,11 @@ impl ProcessControlBlock {
                     tasks: Vec::new(),
                     task_res_allocator: RecycleAllocator::new(),
                     mutex_list: Vec::new(),
+                    available_mutex_list: BTreeMap::new(),
                     semaphore_list: Vec::new(),
+                    available_semaphore_list: BTreeMap::new(),
                     condvar_list: Vec::new(),
+                    deadlock_detect: false,
                 })
             },
         });
@@ -243,8 +253,11 @@ impl ProcessControlBlock {
                     tasks: Vec::new(),
                     task_res_allocator: RecycleAllocator::new(),
                     mutex_list: Vec::new(),
+                    available_mutex_list: BTreeMap::new(),
                     semaphore_list: Vec::new(),
+                    available_semaphore_list: BTreeMap::new(),
                     condvar_list: Vec::new(),
+                    deadlock_detect: false,
                 })
             },
         });

@@ -91,6 +91,21 @@ impl Mutex for MutexBlocking {
         }
     }
 
+    // Mutex1
+    // fn lock(&self) {
+    //     loop {
+    //         let mut mutex_inner = self.inner.exclusive_access();
+    //         if mutex_inner.locked {
+    //             mutex_inner.wait_queue.push_back(current_task().unwrap());
+    //             drop(mutex_inner);
+    //             block_current_and_run_next();
+    //         } else {
+    //             mutex_inner.locked = true;
+    //             break;
+    //         }
+    //     }
+    // }
+
     /// unlock the blocking mutex
     fn unlock(&self) {
         trace!("kernel: MutexBlocking::unlock");
@@ -102,4 +117,14 @@ impl Mutex for MutexBlocking {
             mutex_inner.locked = false;
         }
     }
+
+    // Mutex1
+    // fn unlock(&self) {
+    //     let mut mutex_inner = self.inner.exclusive_access();
+    //     assert!(mutex_inner.locked);
+    //     mutex_inner.locked = false;
+    //     if let Some(waking_task) = mutex_inner.wait_queue.pop_front() {
+    //         wakeup_task(waking_task);
+    //     }
+    // }
 }

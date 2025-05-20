@@ -224,10 +224,11 @@ pub struct UserBuffer {
 }
 
 impl UserBuffer {
-    /// Constuct UserBuffer
+    /// Construct UserBuffer
     pub fn new(buffers: Vec<&'static mut [u8]>) -> Self {
         Self { buffers }
     }
+
     /// Get the length of the buffer
     pub fn len(&self) -> usize {
         let mut total: usize = 0;
